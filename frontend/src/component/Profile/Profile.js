@@ -19,14 +19,28 @@ const Profile = (props) => {
   const [visible, setVisible] = useState(false);
   const [email, setEmail] = useState();
   const [dateJoined, setDateJoined] = useState();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [arrayFollow, setArrayFollow] = useState([]);
+  const [currentUid, setCurrentUid] = useState();
+  const [isFollowed, setIsFollowed] = useState(false);
 
-
+  function handleLoggedIn() {
+    if (!isLoggedIn) {
+      setIsLoggedIn(true);
+    }
+  }
   useEffect(() => {
     getUserInfo();
   }, []);
 
   const getUserInfo = async () => {
     const urlUid = props.match.params.uid;
+    FirebaseController.auth.onAuthStateChanged(function (user) {
+      if (user) {
+        setIsLoggedIn(true);
+        setCurrentUid(user.uid);
+      }
+    });
     const userRef = await FirebaseController.db.collection('users').where('uid', '==', urlUid).limit(1).get();
     const userSnapshot = await userRef.docs.map((doc) => (doc.data()));
     // console.log(userSnapshot);
@@ -35,7 +49,9 @@ const Profile = (props) => {
     setBackground(userSnapshot[0].backgroundURL);
     setDateJoined(userSnapshot[0].dateJoined);
     setEmail(userSnapshot[0].email);
+    setArrayFollow(userSnapshot[0].following);
   }
+
   const showModal = () => {
     if (!visible) setVisible(true);
   };
@@ -48,31 +64,10 @@ const Profile = (props) => {
     setVisible(false);
   };
 
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [currentUid, setCurrentUid] = useState();
-  function handleLoggedIn() {
-    if (!isLoggedIn) {
-      setIsLoggedIn(true);
-    }
-  }
-
-  function handleLoggedOut() {
-    if (isLoggedIn) {
-      FirebaseController.logout()
-      setIsLoggedIn(false);
-    }
-  }
-  FirebaseController.auth.onAuthStateChanged(function (user) {
-    if (user) {
-      setIsLoggedIn(true);
-      setCurrentUid(user.uid);
-    }
-  });
-
   const isCurrentUser = (props.match.params.uid === currentUid) ? true : false;
 
-
   return (
+    
     <div>
       <PageHeader
         ghost={false}
@@ -108,7 +103,17 @@ const Profile = (props) => {
                   >
                    <SetupProfile avatar={avatar} displayName={displayName} background={background} email={email} dateJoined={dateJoined} /> 
                 </Modal></div> :
-                <div></div>
+                <div>
+                  <Button
+                    type="primary"
+                    shape="round"
+                    className="setup-profile"
+                    size="large"
+                  >
+                    Following
+                  </Button>
+                </div>
+
             }
 
             <div className="information">
@@ -126,7 +131,7 @@ const Profile = (props) => {
       <Row>
         <Tabs defaultActiveKey="1">
           <TabPane tab="Tweets" key="1">
-            <Feed type='profile' uid={props.match.params.uid} />
+            <Feed type="profile" uid={props.match.params.uid} />
           </TabPane>
           <TabPane tab="Following" key="2">
             On development

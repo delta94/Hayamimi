@@ -58,51 +58,6 @@ class FirebaseController {
     });
   }
 
-  setupProfile(nickName, avatarURL) {
-    this.auth.currentUser
-      .updateProfile({
-        displayName: nickName,
-        photoURL: avatarURL,
-      })
-      .then(function () {
-        console.log("Update Auth Success!");
-      })
-      .catch((error) => {
-        console.log(error);
-      });
-  }
-
-  setupProfileDB(nickName, avatarURL, backgroundURL) {
-    this.db
-      .collection("users")
-      .doc(this.auth.currentUser.uid)
-      .update({
-        displayName: nickName,
-        avatarURL: avatarURL,
-        backgroundURL: backgroundURL,
-      })
-      .then(() => {
-        console.log("Update database success");
-      })
-      .catch((error) => {
-        console.log(error);
-      });
-  }
-
-  getAllUid() {
-    //Get uid by followings uid
-    const users = [];
-    const uidRef = this.db
-      .collection("users")
-      .get()
-      .then(function (querySnapshot) {
-        querySnapshot.forEach(function (doc) {
-          users.push(doc.id);
-        });
-      });
-
-    return users;
-  }
   isInitialized() {
     return new Promise((resolve) => {
       this.auth.onAuthStateChanged(resolve);
