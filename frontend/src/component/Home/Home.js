@@ -2,6 +2,7 @@ import React from "react";
 import { Layout, Row, Col } from "antd";
 import { Switch, Route, withRouter } from "react-router-dom";
 import NavBar from "./NavBar";
+import RightSideBar from './RightSideBar';
 import Explore from "../Explore/Explore";
 import Feed from "../Feed/Feed";
 import Profile from "../Profile/Profile";
@@ -44,6 +45,9 @@ const Home = (props) => {
           </Col>
         </Row>
       </Content>
+      <Sider width = {400}>
+        <RightSideBar />
+      </Sider>
     </Layout>
   );
 };

@@ -1,45 +1,105 @@
-import React, { useState } from 'react';
-import { Card, Input, Button, Upload } from 'antd';
-import { UploadOutlined } from '@ant-design/icons';
-import FirebaseController from '../../firebase.js';
+import React, { useState } from "react";
+import { Card, Input, Button, Upload } from "antd";
+import { UploadOutlined } from "@ant-design/icons";
+import FirebaseController from "../../firebase.js";
+import { confirmAlert } from "react-confirm-alert";
 
 const UploadPost = () => {
   const { TextArea } = Input;
-  const [status, setStatus] = useState('');
-  const [image, setImage] = useState();
+  const [status, setStatus] = useState("");
+  const [image, setImage] = useState(null);
   const [imageList, setImageList] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
 
   const uploadPost = async () => {
-    if (image) {
-      const random_name =
-        (Math.random().toString(36) + '00000000000000000').slice(2, 10) +
-        '.' +
-        image.name.split('.').slice(-1);
-      // console.log(random_name)
-      const uploadTask = FirebaseController.storage
-        .ref(`images/${random_name}`)
-        .put(image.originFileObj);
+    let userDoc = await FirebaseController.db
+      .collection("users")
+      .doc(FirebaseController.getCurrentUser().uid)
+      .get();
+    const userData = userDoc.data();
+    if (userData.isBlocked) {
+      // user is blocked
+      return confirmAlert({
+        title: "Alert",
+        message: "You have been blocked from upload post and comment",
+        buttons: [
+          {
+            label: "I understand",
+            onClick: () => {
+              return;
+            },
+          },
+        ],
+      });
+    }
+    else {
+      // console.log(status);
+      if (!status && image === null) {
+        return;
+      }
+      console.log(status)
+      setSubmitting(true);
+      if (image) {
+        const random_name =
+          (Math.random().toString(36) + '00000000000000000').slice(2, 10) +
+          '.' +
+          image.name.split('.').slice(-1);
+        // console.log(random_name)
+        const uploadTask = FirebaseController.storage
+          .ref(`images/${random_name}`)
+          .put(image.originFileObj);
 
-      uploadTask.on(
-        'state_changed',
-        (snapshot) => { },
-        (error) => {
-          // error function ....
-          console.log('Error: ', error);
-        },
-        () => {
-          // complete function ....
-          FirebaseController.storage
-            .ref('images')
-            .child(random_name)
-            .getDownloadURL()
-            .then((url) => {
-              uploadPosttoFireStore(url);
-            });
+        uploadTask.on(
+          'state_changed',
+          (snapshot) => { },
+          (error) => {
+            // error function ....
+            console.log('Error: ', error);
+          },
+          () => {
+            // complete function ....
+            FirebaseController.storage
+              .ref('images')
+              .child(random_name)
+              .getDownloadURL()
+              .then((url) => {
+                uploadPosttoFireStore(url);
+              });
+          }
+        );
+      } else {
+        if (image) {
+          const random_name =
+            (Math.random().toString(36) + "00000000000000000").slice(2, 10) +
+            "." +
+            image.name.split(".").slice(-1);
+          // console.log(random_name)
+          const uploadTask = FirebaseController.storage
+            .ref(`images/${random_name}`)
+            .put(image.originFileObj);
+
+          uploadTask.on(
+            "state_changed",
+            (snapshot) => { },
+            (error) => {
+              // error function ....
+              console.log("Error: ", error);
+            },
+            () => {
+              // complete function ....
+              FirebaseController.storage
+                .ref("images")
+                .child(random_name)
+                .getDownloadURL()
+                .then((url) => {
+                  uploadPosttoFireStore(url);
+                });
+            }
+          );
+        } else {
+          uploadPosttoFireStore(null);
         }
-      );
-    } else {
-      uploadPosttoFireStore(null);
+      }
     }
   };
   const uploadPosttoFireStore = async (url) => {
@@ -49,13 +109,16 @@ const UploadPost = () => {
       like: [],
       commentID: [],
       image: url,
-      uid: FirebaseController.getCurrentUser().uid
+      uid: FirebaseController.getCurrentUser().uid,
     };
-    console.log(data);
+    // console.log(data);
     FirebaseController.uploadPost(data);
-    setStatus('');
-    setImage(null);
-    setImageList([]);
+    setTimeout(() => {
+      setSubmitting(false);
+      setStatus('');
+      setImage(null);
+      setImageList([]);
+    }, 1000);
   };
 
   const handleChange = (event) => {
@@ -64,12 +127,12 @@ const UploadPost = () => {
 
   const dummyRequest = ({ file, onSuccess }) => {
     setTimeout(() => {
-      onSuccess('ok');
+      onSuccess("ok");
     }, 0);
   };
 
   const onChange = (e) => {
-    console.log('onChange: ', e.file);
+    console.log("onChange: ", e.file);
     if (e.file) {
       setImage(e.file);
     }
@@ -91,7 +154,7 @@ const UploadPost = () => {
           autoSize={{ minRows: 2 }}
           onChange={handleChange}
         />
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <div style={{ display: "flex", justifyContent: "space-between" }}>
           <Upload
             customRequest={dummyRequest}
             onChange={onChange}
@@ -100,7 +163,7 @@ const UploadPost = () => {
           >
             <Button
               type="ghost"
-              style={{ float: 'left', marginTop: 15 }}
+              style={{ float: "left", marginTop: 15 }}
               listtype="picture"
               className="upload-list-inline"
             >
@@ -108,9 +171,11 @@ const UploadPost = () => {
             </Button>
           </Upload>
           <Button
+            htmlType="submit"
             type="primary"
-            style={{ float: 'right', marginTop: 15 }}
+            style={{ float: "right", marginTop: 15 }}
             onClick={uploadPost}
+            loading={submitting}
           >
             Upload
           </Button>

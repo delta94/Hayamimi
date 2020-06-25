@@ -8,12 +8,21 @@ const Feed = (props) => {
   const [Posts, setPosts] = useState([]);
   const currentUID = localStorage.getItem("uid");
   const isAdmin = localStorage.getItem("isAdmin");
-
   useEffect(() => {
-    getPosts();
+    FirebaseController.auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        const userDoc = await FirebaseController.db
+          .collection("users")
+          .doc(user.uid)
+          .get();
+        const userData = userDoc.data();
+        getPosts(userData.following);
+      }
+    });
   }, []);
 
-  const getPosts = async () => {
+  const getPosts = async (following) => {
+
     const postsRef =
       props.type === "profile"
         ? await FirebaseController.db
@@ -21,10 +30,16 @@ const Feed = (props) => {
           .where("uid", "==", props.uid)
           .orderBy("date", "desc")
           .get()
-        : await FirebaseController.db
-          .collection("posts")
-          .orderBy("date", "desc")
-          .get();
+        : props.type === "home"
+          ? await FirebaseController.db
+            .collection("posts")
+            .where("uid", "in", following)
+            .orderBy("date", "desc")
+            .get() :
+          await FirebaseController.db
+            .collection("posts")
+            .orderBy("date", "desc")
+            .get();
 
     let postsSnapshot = postsRef.docs.map((doc) => ({
       pid: doc.id,
@@ -36,12 +51,8 @@ const Feed = (props) => {
       commentID: doc.data().commentID
     }));
 
-    const usersOnPost = postsRef.docs.map((doc) => doc.data().uid);
-    if (usersOnPost === undefined || usersOnPost.length === 0) return;
-
     const usersRef = await FirebaseController.db
       .collection("users")
-      .where("uid", "in", usersOnPost)
       .get();
 
     const usersSnapshot = usersRef.docs.map((doc) => ({
@@ -76,7 +87,8 @@ const Feed = (props) => {
 
       {Posts.filter((post) => post.content.indexOf(props.search || '') > -1).map(
         (post, idx) => {
-          const permission = post.uid === currentUID || isAdmin ? true : false;
+          // console.log((post.uid === currentUID), ' -- ', isAdmin === true));
+          const permission = ((post.uid === currentUID) || (isAdmin === "true")) ? true : false;
           const date = new Intl.DateTimeFormat("en-US", {
             year: "numeric",
             month: "2-digit",

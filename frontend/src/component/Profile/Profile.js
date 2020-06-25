@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Modal, Tabs, PageHeader, Card, Avatar, Button } from "antd";
+import { Modal, PageHeader, Card, Avatar, Button } from "antd";
 
 import FirebaseController from "../../firebase.js";
 import Feed from "../Feed/Feed.js";
 import SetupProfile from "./SetupProfile.js";
 import "./Profile.css";
 import { MailOutlined, CalendarOutlined } from "@ant-design/icons";
-
-const { TabPane } = Tabs;
 
 const Profile = (props) => {
   const [displayName, setDisplayName] = useState();
@@ -16,10 +14,9 @@ const Profile = (props) => {
   const [visible, setVisible] = useState(false);
   const [email, setEmail] = useState();
   const [dateJoined, setDateJoined] = useState();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [arrayFollow, setArrayFollow] = useState([]);
-  const [currentUid, setCurrentUid] = useState();
-  const [isFollowed, setIsFollowed] = useState(false);
+  const [follow, setFollow] = useState((localStorage.getItem("following").includes(props.match.params.uid)) ? true : false)
+  const currentUid = localStorage.getItem("uid");
+  const isCurrentUser = props.match.params.uid === currentUid ? true : false;
 
   useEffect(() => {
     getUserInfo();
@@ -57,28 +54,21 @@ const Profile = (props) => {
     setVisible(false);
   };
 
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [currentUid, setCurrentUid] = useState();
-  function handleLoggedIn() {
-    if (!isLoggedIn) {
-      setIsLoggedIn(true);
+  const handleFollow = async () => {
+    let new_following = JSON.parse(localStorage.getItem("following"));
+    if (!follow) {
+      new_following.push(props.match.params.uid);
+      setFollow(true);
     }
+    else {
+      new_following = new_following.filter((value) => (value !== props.match.params.uid));
+      setFollow(false);
+    }
+    localStorage.setItem('following', JSON.stringify(new_following));
+    await FirebaseController.db.collection("users").doc(currentUid).update({
+      following: new_following
+    })
   }
-
-  function handleLoggedOut() {
-    if (isLoggedIn) {
-      FirebaseController.logout();
-      setIsLoggedIn(false);
-    }
-  }
-  FirebaseController.auth.onAuthStateChanged(function (user) {
-    if (user) {
-      setIsLoggedIn(true);
-      setCurrentUid(user.uid);
-    }
-  });
-
-  const isCurrentUser = props.match.params.uid === currentUid ? true : false;
 
   return (
     
@@ -124,37 +114,17 @@ const Profile = (props) => {
                 />
               </Modal>
             </div>
-            {
-              (isCurrentUser) ?
-                <div><Button
-                  type="primary"
-                  shape="round"
-                  className="setup-profile"
-                  size="large"
-                  onClick={showModal}
-                >
-                  Set Up Profile
-                </Button>
-                  <Modal
-                    title="SetupProfile"
-                    visible={visible}
-                    onOk={handleOk}
-                    onCancel={handleCancel}
-                  >
-                   <SetupProfile avatar={avatar} displayName={displayName} background={background} email={email} dateJoined={dateJoined} /> 
-                </Modal></div> :
-                <div>
-                  <Button
-                    type="primary"
-                    shape="round"
-                    className="setup-profile"
-                    size="large"
-                  >
-                    Following
-                  </Button>
-                </div>
-
-            }
+          ) : (
+              <Button
+                type={(follow) ? "ghost" : "primary"}
+                shape="round"
+                className="setup-profile"
+                size="large"
+                onClick={handleFollow}
+              >
+                {(follow) ? "Following" : "Follow"}
+              </Button>
+            )}
 
           <div className="information">
             <div className="my-name">{displayName}</div>
@@ -166,18 +136,7 @@ const Profile = (props) => {
           </div>
         </div>
       </Card>
-
-      <Tabs defaultActiveKey="1">
-        <TabPane tab="Tweets" key="1">
-          <Feed type="profile" uid={props.match.params.uid} />
-        </TabPane>
-        <TabPane tab="Following" key="2">
-          On development
-        </TabPane>
-        <TabPane tab="Followed" key="3">
-          On development
-        </TabPane>
-      </Tabs>
+      <Feed type="profile" uid={props.match.params.uid} />
     </div>
   );
 };
